@@ -15,6 +15,8 @@ package main
 import (
 	"log"
 	"math/rand"
+
+	"github.com/eapache/go-resiliency/breaker"
 )
 
 // info is called when you create your Battlesnake on play.battlesnake.com
@@ -53,6 +55,52 @@ func contains(coords []Coord, coord Coord) int {
 
 func snakeCoords(snake Battlesnake) []Coord {
 	return append(snake.Body, snake.Head)
+}
+
+func foodDistances(snake Battlesnake, gameState GameState) map[string]int {
+	foodDistances := map[string]int{
+		"right": -1,
+		"left":  -1,
+		"up":    -1,
+		"down":  -1,
+	}
+
+	// search for food to the right
+	for i := snake.Head.X; i >= 0; i-- {
+		coord := Coord{X: i, Y: snake.Head.Y}
+		if contains(gameState.Board.Food, coord) >= 0 {
+			foodDistances["right"] = snake.Head.X - i
+			break
+		}
+	}
+
+	// search for food to the left
+	for i := snake.Head.X; i < gameState.Board.Width; i++ {
+		coord := Coord{X: i, Y: snake.Head.Y}
+		if contains(gameState.Board.Food, coord) >= 0 {
+			foodDistances["left"] = i - snake.Head.X
+			break
+		}
+	}
+
+	// search for food to the top
+	for i := snake.Head.Y; i < gameState.Board.Height; i++ {
+		coord := Coord{X: snake.Head.X, Y: i}
+		if contains(gameState.Board.Food, coord) >= 0 {
+			foodDistances["up"] = i - snake.Head.Y
+			break
+		}
+	}
+
+	// search for food to the bottom
+	for i := snake.Head.Y; i >= 0; i-- {
+		coord := Coord{X: snake.Head.X, Y: i}
+		if contains(gameState.Board.Food, coord) >= 0 {
+			foodDistances["down"] = i - snake.Head.Y
+			break
+		}
+	}
+	return foodDistances
 }
 
 // move is called on every turn and returns your next move
