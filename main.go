@@ -42,11 +42,19 @@ func end(state GameState) {
 	log.Printf("GAME OVER\n\n")
 }
 
+func contains(coords []Coord, coord Coord) int {
+	for index, c := range coords {
+		if c.X == coord.X && c.Y == coord.Y {
+			return index
+		}
+	}
+	return -1
+}
+
 // move is called on every turn and returns your next move
 // Valid moves are "up", "down", "left", or "right"
 // See https://docs.battlesnake.com/api/example-move for available data
 func move(state GameState) BattlesnakeMoveResponse {
-
 	isMoveSafe := map[string]bool{
 		"up":    true,
 		"down":  true,
@@ -60,24 +68,39 @@ func move(state GameState) BattlesnakeMoveResponse {
 
 	if myNeck.X < myHead.X { // Neck is left of head, don't move left
 		isMoveSafe["left"] = false
-
 	} else if myNeck.X > myHead.X { // Neck is right of head, don't move right
 		isMoveSafe["right"] = false
-
 	} else if myNeck.Y < myHead.Y { // Neck is below head, don't move down
 		isMoveSafe["down"] = false
-
 	} else if myNeck.Y > myHead.Y { // Neck is above head, don't move up
 		isMoveSafe["up"] = false
 	}
 
-	// TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
-	// boardWidth := state.Board.Width
-	// boardHeight := state.Board.Height
+	if myHead.X == 0 { // at the left edge
+		isMoveSafe["left"] = false
+	}
+	if myHead.X == state.Board.Width-1 { // at the right edge
+		isMoveSafe["right"] = false
+	}
+	if myHead.Y == 0 { // at bottom edge
+		isMoveSafe["down"] = false
+	}
+	if myHead.Y == state.Board.Height-1 { // at top edge
+		isMoveSafe["up"] = false
+	}
 
-	// TODO: Step 2 - Prevent your Battlesnake from colliding with itself
-	// mybody := state.You.Body
-
+	if contains(state.You.Body, Coord{X: myHead.X + 1, Y: myHead.Y}) >= 0 {
+		isMoveSafe["right"] = false
+	}
+	if contains(state.You.Body, Coord{X: myHead.X - 1, Y: myHead.Y}) >= 0 {
+		isMoveSafe["left"] = false
+	}
+	if contains(state.You.Body, Coord{X: myHead.X, Y: myHead.Y + 1}) >= 0 {
+		isMoveSafe["up"] = false
+	}
+	if contains(state.You.Body, Coord{X: myHead.X, Y: myHead.Y - 1}) >= 0 {
+		isMoveSafe["down"] = false
+	}
 	// TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
 	// opponents := state.Board.Snakes
 
