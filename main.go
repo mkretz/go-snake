@@ -51,6 +51,10 @@ func contains(coords []Coord, coord Coord) int {
 	return -1
 }
 
+func snakeCoords(snake Battlesnake) []Coord {
+	return append(snake.Body, snake.Head)
+}
+
 // move is called on every turn and returns your next move
 // Valid moves are "up", "down", "left", or "right"
 // See https://docs.battlesnake.com/api/example-move for available data
@@ -89,6 +93,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		isMoveSafe["up"] = false
 	}
 
+	// do not crash into yourself
 	if contains(state.You.Body, Coord{X: myHead.X + 1, Y: myHead.Y}) >= 0 {
 		isMoveSafe["right"] = false
 	}
@@ -101,9 +106,23 @@ func move(state GameState) BattlesnakeMoveResponse {
 	if contains(state.You.Body, Coord{X: myHead.X, Y: myHead.Y - 1}) >= 0 {
 		isMoveSafe["down"] = false
 	}
-	// TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
-	// opponents := state.Board.Snakes
 
+	// do not crash into the other snakes
+	for _, snake := range state.Board.Snakes {
+		if contains(snakeCoords(snake), Coord{X: myHead.X + 1, Y: myHead.Y}) >= 0 {
+			isMoveSafe["right"] = false
+		}
+		if contains(snakeCoords(snake), Coord{X: myHead.X - 1, Y: myHead.Y}) >= 0 {
+			isMoveSafe["left"] = false
+		}
+		if contains(snakeCoords(snake), Coord{X: myHead.X, Y: myHead.Y + 1}) >= 0 {
+			isMoveSafe["up"] = false
+		}
+		if contains(snakeCoords(snake), Coord{X: myHead.X, Y: myHead.Y - 1}) >= 0 {
+			isMoveSafe["down"] = false
+		}
+	}
+	//
 	// Are there any safe moves left?
 	safeMoves := []string{}
 	for move, isSafe := range isMoveSafe {
