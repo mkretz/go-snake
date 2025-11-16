@@ -14,7 +14,7 @@ package main
 
 import (
 	"log"
-	"math/rand"
+	"math"
 )
 
 // info is called when you create your Battlesnake on play.battlesnake.com
@@ -53,6 +53,35 @@ func contains(coords []Coord, coord Coord) int {
 
 func snakeCoords(snake Battlesnake) []Coord {
 	return append(snake.Body, snake.Head)
+}
+
+func distance(from Coord, to Coord) int {
+	return int(math.Abs(float64(to.X-from.X))) + int(math.Abs(float64(to.Y-from.Y)))
+}
+
+func distanceToClosestFood(from Coord, gameState GameState) int {
+	result := gameState.Board.Width + gameState.Board.Height
+	for _, coord := range gameState.Board.Food {
+		if distance(from, coord) < result {
+			result = distance(from, coord)
+		}
+	}
+	return result
+}
+
+func resultingCoord(battlesnake Battlesnake, move string) Coord {
+	switch move {
+	case "right":
+		return Coord{X: battlesnake.Head.X + 1, Y: battlesnake.Head.Y}
+	case "left":
+		return Coord{X: battlesnake.Head.X - 1, Y: battlesnake.Head.Y}
+	case "up":
+		return Coord{X: battlesnake.Head.X, Y: battlesnake.Head.Y + 1}
+	case "down":
+		return Coord{X: battlesnake.Head.X, Y: battlesnake.Head.Y - 1}
+	default:
+		return battlesnake.Head
+	}
 }
 
 func foodDistances(snake Battlesnake, gameState GameState) map[string]int {
@@ -101,21 +130,17 @@ func foodDistances(snake Battlesnake, gameState GameState) map[string]int {
 	return foodDistances
 }
 
-func bestDirectionForFood(snake Battlesnake, gameState GameState, safeMoves []string) (string, bool) {
-	foodDistances := foodDistances(snake, gameState)
-	minFoodDistance := gameState.Board.Width + gameState.Board.Height
-	result := ""
-	foodFound := false
+func bestDirectionForFood(snake Battlesnake, gameState GameState, safeMoves []string) string {
+	result := "down"
+	minDistance := gameState.Board.Width + gameState.Board.Height
 	for _, move := range safeMoves {
-		foodDistance := foodDistances[move]
-		if foodDistance < minFoodDistance {
+		foodDistance := distanceToClosestFood(resultingCoord(snake, move), gameState)
+		if foodDistance < minDistance {
+			minDistance = foodDistance
 			result = move
-			minFoodDistance = foodDistance
-			foodFound = true
-			log.Printf("Closest food %d steps, direction %s\n", foodDistance, move)
 		}
 	}
-	return result, foodFound
+	return result
 }
 
 // move is called on every turn and returns your next move
@@ -199,13 +224,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		return BattlesnakeMoveResponse{Move: "down"}
 	}
 
-	nextMove, found := bestDirectionForFood(state.You, state, safeMoves)
-	if !found {
-		// Choose a random move from the safe ones
-		nextMove = safeMoves[rand.Intn(len(safeMoves))]
-	} else {
-		log.Printf("Food spotted, direction %s\n", nextMove)
-	}
+	nextMove := bestDirectionForFood(state.You, state, safeMoves)
 
 	log.Printf("MOVE %d: %s\n", state.Turn, nextMove)
 	return BattlesnakeMoveResponse{Move: nextMove}
