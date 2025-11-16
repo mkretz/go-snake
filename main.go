@@ -15,8 +15,6 @@ package main
 import (
 	"log"
 	"math/rand"
-
-	"github.com/eapache/go-resiliency/breaker"
 )
 
 // info is called when you create your Battlesnake on play.battlesnake.com
@@ -59,26 +57,26 @@ func snakeCoords(snake Battlesnake) []Coord {
 
 func foodDistances(snake Battlesnake, gameState GameState) map[string]int {
 	foodDistances := map[string]int{
-		"right": -1,
-		"left":  -1,
-		"up":    -1,
-		"down":  -1,
+		"right": gameState.Board.Width + gameState.Board.Height,
+		"left":  gameState.Board.Width + gameState.Board.Height,
+		"up":    gameState.Board.Width + gameState.Board.Height,
+		"down":  gameState.Board.Width + gameState.Board.Height,
 	}
 
 	// search for food to the right
-	for i := snake.Head.X; i >= 0; i-- {
+	for i := snake.Head.X; i < gameState.Board.Width; i++ {
 		coord := Coord{X: i, Y: snake.Head.Y}
 		if contains(gameState.Board.Food, coord) >= 0 {
-			foodDistances["right"] = snake.Head.X - i
+			foodDistances["right"] = i
 			break
 		}
 	}
 
 	// search for food to the left
-	for i := snake.Head.X; i < gameState.Board.Width; i++ {
+	for i := snake.Head.X; i >= 0; i-- {
 		coord := Coord{X: i, Y: snake.Head.Y}
 		if contains(gameState.Board.Food, coord) >= 0 {
-			foodDistances["left"] = i - snake.Head.X
+			foodDistances["left"] = snake.Head.X - i
 			break
 		}
 	}
@@ -87,7 +85,7 @@ func foodDistances(snake Battlesnake, gameState GameState) map[string]int {
 	for i := snake.Head.Y; i < gameState.Board.Height; i++ {
 		coord := Coord{X: snake.Head.X, Y: i}
 		if contains(gameState.Board.Food, coord) >= 0 {
-			foodDistances["up"] = i - snake.Head.Y
+			foodDistances["up"] = i
 			break
 		}
 	}
@@ -96,11 +94,28 @@ func foodDistances(snake Battlesnake, gameState GameState) map[string]int {
 	for i := snake.Head.Y; i >= 0; i-- {
 		coord := Coord{X: snake.Head.X, Y: i}
 		if contains(gameState.Board.Food, coord) >= 0 {
-			foodDistances["down"] = i - snake.Head.Y
+			foodDistances["down"] = snake.Head.Y - i
 			break
 		}
 	}
 	return foodDistances
+}
+
+func bestDirectionForFood(snake Battlesnake, gameState GameState, safeMoves []string) (string, bool) {
+	foodDistances := foodDistances(snake, gameState)
+	minFoodDistance := gameState.Board.Width + gameState.Board.Height
+	result := ""
+	foodFound := false
+	for _, move := range safeMoves {
+		foodDistance := foodDistances[move]
+		if foodDistance < minFoodDistance {
+			result = move
+			minFoodDistance = foodDistance
+			foodFound = true
+			log.Printf("Closest food %d steps, direction %s\n", foodDistance, move)
+		}
+	}
+	return result, foodFound
 }
 
 // move is called on every turn and returns your next move
@@ -184,11 +199,13 @@ func move(state GameState) BattlesnakeMoveResponse {
 		return BattlesnakeMoveResponse{Move: "down"}
 	}
 
-	// Choose a random move from the safe ones
-	nextMove := safeMoves[rand.Intn(len(safeMoves))]
-
-	// TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
-	// food := state.Board.Food
+	nextMove, found := bestDirectionForFood(state.You, state, safeMoves)
+	if !found {
+		// Choose a random move from the safe ones
+		nextMove = safeMoves[rand.Intn(len(safeMoves))]
+	} else {
+		log.Printf("Food spotted, direction %s\n", nextMove)
+	}
 
 	log.Printf("MOVE %d: %s\n", state.Turn, nextMove)
 	return BattlesnakeMoveResponse{Move: nextMove}
